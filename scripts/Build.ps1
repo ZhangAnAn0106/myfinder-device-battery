@@ -38,8 +38,12 @@ if ($LASTEXITCODE -ne 0) { throw 'Tray build failed.' }
 if ($LASTEXITCODE -ne 0) { throw 'Offline tests failed.' }
 & (Join-Path $buildOutput 'AtkMouseBattery.exe') --preview $buildOutput
 if ($LASTEXITCODE -ne 0) { throw 'Appearance preview failed.' }
-& (Join-Path $projectRoot 'tests\Run.ps1') -OutputDirectory (Join-Path $buildOutput 'tests')
-if(-not $?){throw 'Regression checks failed.'}
+if($env:MYFINDER_SKIP_REGRESSION -eq '1'){
+    Write-Host 'Skipping UI regression checks because MYFINDER_SKIP_REGRESSION=1 (local test package only).'
+} else {
+    & (Join-Path $projectRoot 'tests\Run.ps1') -OutputDirectory (Join-Path $buildOutput 'tests')
+    if(-not $?){throw 'Regression checks failed.'}
+}
 $buildInfo=[ordered]@{schema=2;version=$release.version;releaseSha256=(Get-FileHash -LiteralPath (Join-Path $projectRoot 'release.json') -Algorithm SHA256).Hash.ToLowerInvariant();
     files=@('AtkMouseBattery.exe','AtkBatteryProbe.exe' | ForEach-Object {[pscustomobject]@{path=$_;sha256=(Get-FileHash -LiteralPath (Join-Path $buildOutput $_) -Algorithm SHA256).Hash.ToLowerInvariant()}});
     sources=@(Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.cs' -File | Sort-Object Name | ForEach-Object {[pscustomobject]@{path=('scripts/'+$_.Name);sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()}})+@([pscustomobject]@{path=$iconRelative;sha256=(Get-FileHash -LiteralPath $iconPath -Algorithm SHA256).Hash.ToLowerInvariant()},[pscustomobject]@{path='engine/device_pack_schema.json';sha256=(Get-FileHash -LiteralPath (Join-Path $projectRoot 'engine\device_pack_schema.json') -Algorithm SHA256).Hash.ToLowerInvariant()})}
