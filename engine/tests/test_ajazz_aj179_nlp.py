@@ -412,7 +412,7 @@ class AjazzAj179NlpTests(unittest.TestCase):
             for mapping in mappings
         ))
         self.assertIn(
-            ("atk_headset", "delux", "vgn_ry_ms", "ajazz_aj179_nlp"),
+            ("atk_headset", "delux", "telink_5b2f", "vgn_ry_ms", "ajazz_aj179_nlp"),
             tuples,
         )
         diagnostics = next(

@@ -4344,6 +4344,33 @@ The existing bounded exchange sends `08 04` once with checksum `49` after
 the zero arguments. The decoder validates the reply command, status, checksum
 and voltage before accepting the percentage at byte 6. Charging is unknown.
 
+### Telink shared receiver (248A:5B2F)
+
+The Telink receiver `248A:5B2F` is shared by unrelated mice, including the
+DELUX M800 Pro, the Lofree Touch and the Lenovo ERAZER G501, so no brand or
+model is claimed and the card name stays neutral. A 2026-11-23 diagnostic
+from a G501 owner proves this receiver's vendor collection on interface 1
+(MI_01, Col04) is `FF00:0001`; the same collection is the one BatteryHub
+opens for the M800 Pro. BatteryHub (krisgfx9/Wireless-Device-Battery-Monitor,
+`src/drivers/misc_mice.cpp`, `PollDeluxM800`) is hardware-tested on this
+receiver and documents a 33-byte feature report `0C`: SET_FEATURE
+`[0C][01][20][00][seq...]` with an incrementing sequence byte, a 20 ms wait,
+then GET_FEATURE `0C`; the reply carries an ASCII model at bytes 8..11, the
+percentage at byte 18 and a state byte at 19 (0 discharging, 1 charging,
+2 full). A header-valid reply with byte 6 zero is retried once with a fresh
+sequence. This candidate sends only that status query, only after the local
+descriptor proves feature report `0C` at 33 bytes or more on the unique
+`FF00:0001` collection of one resolved USB parent, and validates the reply
+header, the documented state values and the percentage range. The state
+byte's charging meaning is not yet validated in this project, so charging
+stays unknown; the model bytes are not gated, because sibling mice on this
+receiver report their own model strings. The wired `248A:5B2E` identity is
+outside this candidate. Project verification grade C; the first hardware
+target is the G501, and no reading on any mouse sharing this receiver has
+been verified in this project yet.
+
+[BatteryHub Delux M800 Pro driver](https://github.com/krisgfx9/Wireless-Device-Battery-Monitor) (`src/drivers/misc_mice.cpp`, `PollDeluxM800`) · [Earlier 248A:5B2F evidence review](../docs/inphic-in9-xichen.md)
+
 ## VGN shared 3554:FB3E 2.4 GHz receiver
 
 Reports from two owners identify the same CompX receiver under two retail mouse names.

@@ -60,7 +60,7 @@ TABLES = {
     "rapoo": ("PIDS",),
     "rapoo_mt560": ("PIDS",),
     "fa6x_passive": ("PIDS",),
-    "dareu": ("PIDS",), "delux": ("PIDS",), "vgn_ry_ms": ("PIDS",),
+    "dareu": ("PIDS",), "delux": ("PIDS",), "telink_5b2f": ("PIDS",), "vgn_ry_ms": ("PIDS",),
     "vgn_dragonfly3": ("PIDS",), "ninjutso_legacy": ("PIDS",),
     "steelseries": ("MODELS", "MOUSE_MODELS", "CLASSIC_MODELS"),
     "steelseries_elite": ("PIDS",), "wlmouse": ("KNOWN",), "razer": ("KNOWN",),
@@ -305,7 +305,7 @@ def build_index(root=None, *, engine_root=None):
         scope = readers.get(entry["provider"], {}).get("matchScope", "")
         if (entry["name"].casefold().endswith("(model identification required)")
                 or "产品全名" in scope or "产品名" in scope
-                or entry["provider"] in ("fa6x_passive", "asus_omni")
+                or entry["provider"] in ("fa6x_passive", "telink_5b2f", "asus_omni")
                 or (entry["provider"] == "asus_azoth" and entry["productId"] == 0x1ACE)):
             entry["requiresModelMatch"] = True
         indexed.append(entry)
