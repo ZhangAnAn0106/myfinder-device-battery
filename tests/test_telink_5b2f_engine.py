@@ -22,7 +22,7 @@ class Telink5b2fBridgeTests(unittest.TestCase):
         self.assertIn(("telink_5b2f", "Telink5b2fProvider"), server.PROVIDERS)
         self.assertEqual(server.PROVIDER_VIDS["telink_5b2f"], (VID,))
         self.assertIn("telink_5b2f", BRAND_PROVIDERS)
-        self.assertIn("telink_5b2f", server.NO_CHARGING_EVIDENCE)
+        self.assertNotIn("telink_5b2f", server.NO_CHARGING_EVIDENCE)
         self.assertIn("telink_5b2f", server.READER_DIAGNOSTICS)
         disabled = parse_pack(json.dumps({
             "format": "myfinder-device-pack", "loader": 1, "packVersion": 1,

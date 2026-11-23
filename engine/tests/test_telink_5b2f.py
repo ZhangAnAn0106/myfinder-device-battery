@@ -2,7 +2,8 @@
 
 Runs without hidapi or hardware, using the common protocol-test stub.
 Frames follow BatteryHub's hardware-tested M800 Pro exchange on this
-shared receiver; no G501 reply has been captured yet.
+shared receiver; the percentage was verified on a real G501 (2026-11-23),
+while the charging semantics still await a plug-in test there.
 """
 from __future__ import annotations
 
@@ -101,19 +102,23 @@ class Telink5b2fTests(unittest.TestCase):
         dev.open_path.assert_called_once_with(b"mock-telink")
         self.assertEqual(result[0].name, "2.4G 无线鼠标（248A:5B2F）")
 
-    def test_valid_reply_never_infers_charging(self):
-        for state in (0, 1):
+    def test_charging_follows_documented_state_byte(self):
+        # State byte: 0 discharging, 1 charging, 2 full (level forced to 100).
+        cases = ((0, 63, False), (1, 63, True), (2, 100, False))
+        for state, level, charging in cases:
             with self.subTest(state=state):
+                self.assertEqual(telink_5b2f.parse_reply(reply(state=state)),
+                                 (level, charging, ""))
                 provider, backend, dev, result = self.poll(frames=[reply(state=state)])
                 self.assertEqual(len(result), 1)
                 status = result[0]
-                self.assertEqual(status.level, 63)
+                self.assertEqual(status.level, level)
                 self.assertEqual(status.source, "telink_5b2f")
                 self.assertEqual(status.kind, "mouse")
                 self.assertTrue(status.online)
                 self.assertTrue(status.connection_known)
-                self.assertFalse(status.charging)
-                self.assertIs(status.charging_known, False)
+                self.assertIs(status.charging, charging)
+                self.assertIs(status.charging_known, True)
                 self.assertFalse(status.unconfirmed)
                 self.assertEqual(status.verification_level, "C")
                 dev.send_feature_report.assert_called_once()

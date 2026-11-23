@@ -4,16 +4,6 @@ How each device's battery level is read - one section per device, linked from th
 the [README](../README.md#supported-devices). These are the implementation notes: what is sent,
 what comes back, and where each protocol was taken from.
 
-## Receivers added in 1.4.0-beta.4
-
-| 2.4 GHz receiver | Battery protocol evidence |
-| --- | --- |
-| AULA F108 Pro, 05AC:024F | [BrimDeck SonixQuery, revision f1510d0](https://github.com/MoFeng2223/BrimDeck/blob/f1510d09677492a13a31d26bc37c3509da1b818f/src/BrimDeck.Core/Brands/SonixQuery.cs) documents a hardware check on this model. The `F108Pro Dongle` product string and unique FF60:0061 collection identify its 33-byte report-0 transport. The 20 01 query returns the percentage in payload byte 3, with an additive checksum. Zero indicates sleep or an echo. Charging is unknown. |
-| MCHOSE V7 Pro, 3837:101D | [Official M HUB](https://www.mchose.com.cn/) lists 4125 as the wireless product ID for V7 Pro. The archived main-DCRwBIvm.js (SHA-256 `405102805e2adeb93073ee2186f6d0193ca1317a6b4657d636e4e611bd25a446`) binds this family to readDeviceInfo, command 0900, output report 4D. Its deviceInfoToObj reads the link, charging and level fields at payload offsets 10, 11 and 12. MyFinder queries the proven FF01:0001 transport and treats a zero wireless level as disconnected. |
-| Razer BlackShark V2 HyperSpeed, 1532:0565 | [openrazer-win protocol](https://github.com/Ar4ikov/openrazer-win/blob/2423b2ef24b983a938280fd0ef9e4b7d38cb62ad/openrazer_win/protocol/blackshark.py) and its [Windows reader](https://github.com/Ar4ikov/openrazer-win/blob/2423b2ef24b983a938280fd0ef9e4b7d38cb62ad/openrazer_win/core/blackshark.py) identify receiver interface 3 and a 64-byte output/input report with ID 02. A query of battery register 21 in headset domain 80 returns the percentage. Replies carry the request sequence, status, payload length and XOR checksum. |
-
-These are independent implementations based on protocol facts. BrimDeck identifies its source under Apache-2.0 and openrazer-win under GPL-2.0. MyFinder ships no vendor driver or upstream executable for these readers. The three candidates have synthetic test coverage and await hardware confirmation in MyFinder.
-
 ## AJAZZ AJ179 NLP (7768:642E)
 
 Issue #1064, candidate evidence level C. Independently implemented from public
@@ -4371,13 +4361,13 @@ percentage at byte 18 and a state byte at 19 (0 discharging, 1 charging,
 sequence. This candidate sends only that status query, only after the local
 descriptor proves feature report `0C` at 33 bytes or more on the unique
 `FF00:0001` collection of one resolved USB parent, and validates the reply
-header, the documented state values and the percentage range. The state
-byte's charging meaning is not yet validated in this project, so charging
-stays unknown; the model bytes are not gated, because sibling mice on this
-receiver report their own model strings. The wired `248A:5B2E` identity is
-outside this candidate. Project verification grade C; the first hardware
-target is the G501, and no reading on any mouse sharing this receiver has
-been verified in this project yet.
+header, the documented state values and the percentage range. Charging is
+reported from the documented state byte (1 charging, 2 full); the model
+bytes are not gated, because sibling mice on this receiver report their own
+model strings. The wired `248A:5B2E` identity is outside this candidate.
+Project verification grade C; the percentage was verified on a real G501 on
+2026-11-23, matching the official ERAZER driver exactly, while the charging
+semantics still await a plug-in test on that hardware.
 
 [BatteryHub Delux M800 Pro driver](https://github.com/krisgfx9/Wireless-Device-Battery-Monitor) (`src/drivers/misc_mice.cpp`, `PollDeluxM800`) · [Earlier 248A:5B2F evidence review](../docs/inphic-in9-xichen.md)
 

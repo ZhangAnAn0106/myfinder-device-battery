@@ -7,8 +7,10 @@ collection on interface 1 is used, and only the status query documented for
 this receiver family by BatteryHub (krisgfx9/Wireless-Device-Battery-Monitor,
 src/drivers/misc_mice.cpp PollDeluxM800, hardware-tested on an M800 Pro
 receiver) is sent: SET_FEATURE 0C [01 20 00 <seq>], then GET_FEATURE 0C.
-The reply's state byte is validated against its documented values, but
-charging is deliberately left unknown pending validation in this project.
+The reply's state byte is validated against its documented values and
+charging follows it (1 means charging, 2 means full). The percentage was
+validated on a real G501 on 2026-11-23, matching the official ERAZER driver
+exactly; the charging semantics still await a plug-in test on that hardware.
 The wired 248A:5B2E identity is outside this candidate.
 """
 from __future__ import annotations
@@ -73,9 +75,10 @@ def parse_reply(reply) -> Optional[Tuple[int, bool, str]]:
         level = 100
     if not 1 <= level <= 100:
         return None
-    # The state byte's charging meaning is documented upstream but has not
-    # been validated on this project's hardware; leave charging unknown.
-    return level, False, ""
+    # Charging follows the documented state byte (1 charging; 0 and the
+    # full state 2 are not charging). Percent is validated on G501 hardware;
+    # the charging semantics still await a plug-in test there.
+    return level, state == 1, ""
 
 
 def _feature_length(info) -> Optional[int]:
@@ -98,7 +101,7 @@ class Telink5b2fProvider(BatteryHidProvider):
     vid = VID
     pids = PIDS
     collection = COLLECTION
-    charging_known = False
+    charging_known = True
     unconfirmed = False
     verification_level = "C"
     kind = "mouse"
@@ -187,12 +190,12 @@ class Telink5b2fProvider(BatteryHidProvider):
                 if not self._diag:
                     self._diag = ["no valid battery reply; connection unknown"]
                 return []
-            level, _charging, approx = reading
+            level, charging, approx = reading
             physical = info.get("physical_id", "")
             return [DeviceStatus(
                 f"{self.name}:{physical or repr(info['path'])}", self.device_name(info),
-                level, False, True, self.name, approx=approx, kind=self.kind,
-                physical_id=physical, connection_known=True, charging_known=False,
+                level, charging, True, self.name, approx=approx, kind=self.kind,
+                physical_id=physical, connection_known=True, charging_known=True,
                 verification_level=self.verification_level, unconfirmed=False)]
         except (OSError, ValueError):
             self._diag.append("battery I/O failed; connection unknown")
