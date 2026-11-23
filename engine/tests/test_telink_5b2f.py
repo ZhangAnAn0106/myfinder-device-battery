@@ -6,6 +6,7 @@ shared receiver; no G501 reply has been captured yet.
 """
 from __future__ import annotations
 
+import ast
 import sys
 import unittest
 from pathlib import Path
@@ -193,6 +194,45 @@ class Telink5b2fTests(unittest.TestCase):
         with patch.object(telink_5b2f.hidlist, "enumerate", side_effect=OSError("private path")):
             self.assertEqual(provider.poll(), [])
         self.assertEqual(provider.diagnostics(), ["enumeration failed: nothing sent"])
+
+
+    def test_real_hardware_shaped_inventory_without_feature_proof(self):
+        # What topology.discover actually yields for this receiver when its
+        # scoped proof block has not run: usage/interface/physical only, no
+        # feature_report_length or feature_report_sizes keys at all. The gate
+        # must still fail closed, send nothing, and name the exact reason.
+        shaped = dict(vendor_id=0x248A, product_id=0x5B2F, usage_page=0xFF00,
+                      usage=1, path=b"\\\\?\\hid#vid_248a&pid_5b2f&mi_01&col04#mock",
+                      physical_id="pnp:usb\\vid_248a&pid_5b2f\\mock-unit",
+                      interface_number=1, release_number=0x0121,
+                      input_report_length=0, output_report_length=0,
+                      product_string="Wireless-Receiver",
+                      manufacturer_string="", serial_number="")
+        self.assertNotIn("feature_report_sizes", shaped)
+        provider, backend, dev, result = self.poll([shaped])
+        self.assertEqual(result, [])
+        backend.device.assert_not_called()
+        dev.open_path.assert_not_called()
+        dev.send_feature_report.assert_not_called()
+        self.assertEqual(provider.diagnostics(),
+                         ["feature-0C length unproven or incompatible: nothing sent"])
+
+    def test_topology_proof_is_scoped_to_exact_receiver_collection(self):
+        tree = ast.parse((Path(__file__).resolve().parents[1] / "topology.py")
+                         .read_text(encoding="utf-8"))
+        blocks = [
+            node for node in ast.walk(tree)
+            if isinstance(node, ast.If)
+            and {0x248A, 0x5B2F, 0xFF00, 0x0001} <= {
+                child.value for child in ast.walk(node.test)
+                if isinstance(child, ast.Constant) and type(child.value) is int}
+            and "byte_report_sizes(hid, data, caps, 2)" in ast.unparse(node)
+        ]
+        self.assertTrue(blocks, "topology must prove feature sizes for 248A:5B2F FF00:0001")
+        block = min(blocks, key=lambda node: node.end_lineno - node.lineno)
+        text = ast.unparse(block)
+        self.assertIn("feature_report_length=caps.feature", text)
+        self.assertIn("feature_report_sizes=byte_report_sizes(hid, data, caps, 2)", text)
 
 
 if __name__ == "__main__":

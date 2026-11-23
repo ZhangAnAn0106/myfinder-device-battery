@@ -437,18 +437,8 @@ def discover(paths, excluded=(), *, full=False):
                 caps_complete = (caps.input == caps.output == 64
                                  and info["input_report_sizes"] == {"206": 64}
                                  and info["output_report_sizes"] == {"205": 64})
-            if (caps_complete and (attrs.vendor, attrs.product, caps.page, caps.usage)
-                    == (0x1532, 0x0565, 0xFF14, 0x0001)
-                    and info["product_string"] == "Razer BlackShark V2 HS 2.4"
-                    and info["interface_number"] == 3 and caps.input == caps.output == 64):
-                from battery_hid import battery_caps
-                info.update(battery_caps(hid, data, caps))
-                _descriptor_fallback(info, caps, ("input", "output"))
-                caps_complete = all(info[d + "_report_sizes"] is not None for d in ("input", "output"))
-
             if caps_complete and (attrs.vendor, attrs.product, caps.page, caps.usage) in (
                     (0x3837, 0x1018, 0xFF01, 0x0001),
-                    (0x3837, 0x101D, 0xFF01, 0x0001),
                     (0x3837, 0x1018, 0xFF0B, 0x00C4),
                     (0x3837, 0x1014, 0xFF01, 0x0001),
                     (0x3837, 0x1016, 0xFF01, 0x0001),
@@ -471,8 +461,7 @@ def discover(paths, excluded=(), *, full=False):
                 from battery_hid import battery_caps
                 info.update(battery_caps(hid, data, caps))
                 if (attrs.vendor, attrs.product) in (
-                        (0x35D8, 0x0133), (0x3837, 0x1018), (0x3837, 0x101D),
-                        (0x3837, 0x1014),
+                        (0x35D8, 0x0133), (0x3837, 0x1018), (0x3837, 0x1014),
                         (0x3837, 0x1016),
                         (0x41E4, 0x2001), (0x3554, 0xFA09), (0x3554, 0xFB26),
                         (0x3554, 0xFB3E)):
@@ -598,6 +587,16 @@ def discover(paths, excluded=(), *, full=False):
                 if (attrs.vendor, attrs.product) == (0x372E, 0x1026):
                     _descriptor_fallback(info, caps, ("feature",))
                 caps_complete = info["feature_report_sizes"] is not None
+            if caps_complete and (attrs.vendor, attrs.product, caps.page, caps.usage) == (
+                    0x248A, 0x5B2F, 0xFF00, 0x0001):
+                # Telink shared receiver (248A:5B2F): metadata only, access 0.
+                # Prove the feature report sizes before the candidate reader
+                # may send its documented status query; nothing else about
+                # this shared receiver is inferred here.
+                from battery_hid import byte_report_sizes
+                info.update(feature_report_length=caps.feature,
+                            feature_report_sizes=byte_report_sizes(hid, data, caps, 2))
+                caps_complete = info["feature_report_sizes"] is not None
             if (caps_complete and attrs.vendor == 0x1532 and attrs.product in (0x00E5, 0x00E6)
                     and (info["interface_number"], caps.page, caps.usage) == (3, 0x000C, 1)):
                 from battery_hid import byte_report_sizes
@@ -675,16 +674,6 @@ def discover(paths, excluded=(), *, full=False):
                     (0x0C45, 0xFEFE, 0xFF60, 0x0061)):
                 from battery_hid import battery_caps
                 info.update(battery_caps(hid, data, caps))
-                caps_complete = all(info.get(key) is not None
-                                    for key in ("input_report_sizes", "output_report_sizes"))
-            if (caps_complete
-                    and (attrs.vendor, attrs.product, caps.page, caps.usage) ==
-                    (0x05AC, 0x024F, 0xFF60, 0x0061)
-                    and info["product_string"] == "F108Pro Dongle"
-                    and caps.input == caps.output == 33):
-                from battery_hid import battery_caps
-                info.update(battery_caps(hid, data, caps))
-                _descriptor_fallback(info, caps, ("input", "output"))
                 caps_complete = all(info.get(key) is not None
                                     for key in ("input_report_sizes", "output_report_sizes"))
             if caps_complete and info.get("input_report_sizes") is None:

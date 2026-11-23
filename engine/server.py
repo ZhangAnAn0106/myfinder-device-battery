@@ -991,7 +991,7 @@ class BatteryEngine:
         # reader state, retries and the errors list must not treat it as failure.
         for item in health:
             summary = item.pop("diagnosticSummary", "")
-            if item["provider"] in ("mchose_by_keyboard", "mchose_glw_keyboard", "mchose_qhw_keyboard", "mchose_headset", "atk_headset", "mchose", "rapoo", "rapoo_mt560", "moondrop", "pulsar", "fa6x_passive", "cherry", "lingbao", "zhuaudio", "asus_omni") and summary and not item.get("errorCode"):
+            if item["provider"] in ("mchose_by_keyboard", "mchose_glw_keyboard", "mchose_qhw_keyboard", "mchose_headset", "atk_headset", "mchose", "rapoo", "rapoo_mt560", "moondrop", "pulsar", "fa6x_passive", "cherry", "lingbao", "zhuaudio", "asus_omni", "telink_5b2f") and summary and not item.get("errorCode"):
                 item["errorCode"] = summary
         if complete and unadapted_inventory is not None:
             self.unadapted = unadapted_devices(unadapted_inventory, self.previous)
@@ -1110,6 +1110,24 @@ class BatteryEngine:
                 # These readers emit only fixed text, numeric descriptor sizes and
                 # input report IDs/lengths. No paths, payloads or exceptions.
                 self.health[reader_key]["diagnosticSummary"] = reader_health_summary(diagnostics[0])
+            if name == "telink_5b2f" and not measured:
+                # The Telink candidate emits only fixed reasons; project the
+                # first known one so the reader line is never blank.
+                for message, summary in (
+                    ("feature-0C length unproven or incompatible: nothing sent", "report sizes unproven"),
+                    ("missing or ambiguous eligible collection: nothing sent", "collection missing or ambiguous"),
+                    ("physical parent unresolved; nothing sent", "physical parent unresolved"),
+                    ("interface unproven: nothing sent", "interface unproven"),
+                    ("enumeration failed: nothing sent", "enumeration failed"),
+                    ("short/failed battery feature request; no retry", "battery query write short/failed"),
+                    ("no valid battery reply; connection unknown", "no valid battery reply"),
+                    ("battery I/O failed; connection unknown", "battery I/O failed"),
+                    ("HID handle close failed", "HID handle close failed"),
+                ):
+                    if any(line == message or line.startswith(message + ";")
+                           for line in diagnostics if isinstance(line, str)):
+                        self.health[reader_key]["diagnosticSummary"] = summary
+                        break
             if name == "mchose_by_keyboard" and not measured:
                 # Feedback needs a short, fixed reason. Keep it separate from
                 # errorCode, which would also populate snapshot errors.
